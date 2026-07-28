@@ -1,6 +1,7 @@
 """
 🚀 CORE AGENT APP (Dành cho Role 4: Core Agent Developer)
 File chính ghép nối tất cả các thành phần: Tools + Prompts + Test Cases + Multi-Provider.
+Hỗ trợ cả chế độ Tương tác trực tiếp (Interactive CLI Chatbot) và Chạy tự động bộ Test Cases.
 """
 
 import json
@@ -80,7 +81,7 @@ def run_baseline_chatbot(test_case: dict, provider):
 
 def run_react_agent(test_case: dict, provider):
     """
-    Dựng vòng lặp ReAct Agent (Thought -> Action -> Observation) có Guardrails (Mốc 3).
+    Dựng vòng lặp ReAct Agent (Thought -> Action -> Observation) có Guardrails.
     """
     user_query = test_case["question"]
     tc_id = test_case.get("id", "?")
@@ -151,22 +152,55 @@ def run_react_agent(test_case: dict, provider):
             print(f"\n🛡️ GUARDRAIL TRIGGERED: Đã đạt giới hạn tối đa {MAX_ITERATIONS} bước. Ngắt lặp an toàn!")
 
 
+def run_interactive_agent(provider):
+    """
+    Chế độ Chatbot tương tác trực tiếp qua Console CLI (Interactive Mode).
+    Người dùng tự gõ câu hỏi để ReAct Agent trả lời theo thời gian thực.
+    """
+    print("\n==================================================")
+    print("💬 CHẾ ĐỘ CHATBOT TƯƠNG TÁC TRỰC TIẾP (INTERACTIVE CLI)")
+    print("Nhập câu hỏi của bạn để chat với ReAct Agent.")
+    print("Gõ 'exit', 'quit' hoặc 'q' để thoát.")
+    print("==================================================")
+    
+    while True:
+        try:
+            user_query = input("\n👤 Bạn: ").strip()
+            if not user_query:
+                continue
+            if user_query.lower() in ["exit", "quit", "q"]:
+                print("👋 Cảm ơn bạn đã sử dụng Chatbot!")
+                break
+                
+            test_case_dict = {
+                "id": "CLI",
+                "category": "Tương tác trực tiếp",
+                "question": user_query
+            }
+            run_react_agent(test_case_dict, provider)
+        except (KeyboardInterrupt, EOFError):
+            print("\n👋 Đã thoát chương trình!")
+            break
+
+
 if __name__ == "__main__":
     print("==================================================")
     print("🏫 ĐẠI HỌC VINUNI - BÀI LAB 3: CHATBOT VS REACT AGENT")
-    print("📌 MỐC 3: REACT AGENT LOOP & SAFEGUARDS (ROLE 4)")
+    print("📌 CHẾ ĐỘ CHẠY CHATBOT TƯƠNG TÁC & KIỂM THỬ (ROLE 4)")
     print("==================================================")
     
     # Khởi tạo Multi-Provider LLM Adapter (Đọc từ biến môi trường LLM_PROVIDER)
     provider = get_llm_provider()
     model_name = getattr(provider, "model_name", "Offline Mock Mode")
-    print(f"🔌 LLM Provider đang hoạt động: {provider.__class__.__name__} (Model: {model_name})")
+    print(f"🔌 LLM Provider đang hoạt động: {provider.__class__.__name__} (Model: {model_name})\n")
     
-    tests = load_test_cases()
-    print(f"✅ Đã tải thành công {len(tests)} Test Cases từ config/test_cases.json\n")
-    
-    print("\n==================================================")
-    print("🚀 CHẠY KIỂM THỬ REACT AGENT LOOP (MỐC 3)")
-    print("==================================================")
-    for test in tests:
-        run_react_agent(test, provider)
+    # Kiểm tra tham số truyền vào qua command line (ví dụ: python src/app.py --test)
+    if len(sys.argv) > 1 and sys.argv[1] in ["--test", "-t", "test"]:
+        tests = load_test_cases()
+        print(f"✅ Đã tải thành công {len(tests)} Test Cases từ config/test_cases.json\n")
+        print("🚀 CHẠY TỰ ĐỘNG BỘ TEST CASES...")
+        for test in tests:
+            run_react_agent(test, provider)
+    else:
+        # Mặc định chạy chế độ Tương tác trực tiếp Chatbot CLI
+        run_interactive_agent(provider)
