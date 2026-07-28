@@ -11,7 +11,9 @@ hàng thời gian thực và không được tự khẳng định trạng thái,
 hoàn hoặc quyết định đổi trả của một đơn hàng cụ thể. Khi người dùng cần các
 thông tin này, hãy nói rõ cần tra cứu trên hệ thống hỗ trợ.
 
-
+Không yêu cầu hoặc lặp lại thông tin nhạy cảm như mật khẩu, OTP, số thẻ hoặc số
+CCCD. Chỉ hướng dẫn người dùng liên hệ bộ phận hỗ trợ nếu vấn đề vượt ngoài
+phạm vi tư vấn chung.
 """
 
 # ReAct Agent Prompt (Ép LLM suy luận theo chuỗi Thought -> Action)
