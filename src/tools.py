@@ -13,65 +13,9 @@ from datetime import datetime
 CSV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "orders.csv"))
 POLICIES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "return_policies.json"))
 
-# Ngày hiện tại thực tế của hệ thống (Không còn fix cứng nữa)
+# Ngày hiện tại thực tế của hệ thống (Tính động theo thời gian thực để sẵn sàng cho dự án thật)
 CURRENT_DATE = datetime.now().date()
 CURRENT_DATE_STR = CURRENT_DATE.strftime("%Y-%m-%d")
-
-
-def sync_database_dates():
-    """
-    Tự động cập nhật ngày trong file data/orders.csv để đồng bộ với ngày hiện tại của hệ thống.
-    Giúp bài lab luôn đúng về mặt logic thời gian bất kể ngày chạy thực tế là ngày nào.
-    """
-    try:
-        if not os.path.exists(CSV_PATH):
-            return
-            
-        # Mốc ngày gốc dùng để thiết kế dữ liệu ban đầu
-        base_date = datetime.strptime("2026-07-28", "%Y-%m-%d").date()
-        delta = CURRENT_DATE - base_date
-        
-        if delta.days == 0:
-            return  # Không cần dịch chuyển nếu ngày chạy trùng với mốc ngày gốc
-            
-        rows = []
-        headers = []
-        
-        # 1. Đọc và dịch chuyển ngày trong bộ dữ liệu
-        with open(CSV_PATH, mode="r", encoding="utf-8") as file:
-            reader = csv.DictReader(file)
-            headers = reader.fieldnames
-            if not headers:
-                return
-            for row in reader:
-                # Dịch chuyển ngày đặt hàng (order_date)
-                if row.get("order_date"):
-                    try:
-                        od = datetime.strptime(row["order_date"], "%Y-%m-%d").date()
-                        row["order_date"] = (od + delta).strftime("%Y-%m-%d")
-                    except ValueError:
-                        pass
-                # Dịch chuyển ngày giao hàng (delivery_date)
-                if row.get("delivery_date"):
-                    try:
-                        dd = datetime.strptime(row["delivery_date"], "%Y-%m-%d").date()
-                        row["delivery_date"] = (dd + delta).strftime("%Y-%m-%d")
-                    except ValueError:
-                        pass
-                rows.append(row)
-                
-        # 2. Ghi lại dữ liệu đã đồng bộ vào file CSV
-        with open(CSV_PATH, mode="w", encoding="utf-8", newline="") as file:
-            writer = csv.DictWriter(file, fieldnames=headers)
-            writer.writeheader()
-            writer.writerows(rows)
-    except Exception as e:
-        # Chống crash tuyệt đối lúc import module
-        print(f"[Cảnh báo hệ thống] Lỗi tự động đồng bộ ngày CSV: {e}")
-
-
-# Tự động đồng bộ ngày trong CSV khi module tools được import
-sync_database_dates()
 
 
 def load_return_policies() -> dict:
