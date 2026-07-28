@@ -21,9 +21,14 @@ if sys.stdout.encoding != 'utf-8':
         pass
 
 # Import các thành phần từ file của Role 2, Role 3 & Multi-Provider Adapter
-from tools import AVAILABLE_TOOLS
 from prompts import CHATBOT_BASELINE_PROMPT, REACT_SYSTEM_PROMPT, MAX_ITERATIONS
 from providers import get_llm_provider
+from agent_safety import (
+    execute_safe_tool,
+    extract_safe_final_answer,
+    prepare_user_query,
+    redact_sensitive_text,
+)
 
 load_dotenv()
 
@@ -72,10 +77,15 @@ def run_baseline_chatbot(test_case: dict, provider):
     
     print(f"\n--------------------------------------------------")
     print(f"💬 [CHATBOT BASELINE] [TEST CASE #{tc_id}] [{category}]")
-    print(f"❓ Câu hỏi: {user_query}")
+    print(f"❓ Câu hỏi: {redact_sensitive_text(user_query)}")
+
+    safe_query, refusal = prepare_user_query(user_query)
+    if refusal:
+        print(f"🤖 Chatbot Baseline trả lời:\n{refusal[1]}")
+        return
     
     # Gọi LLM Provider thực hiện sinh câu trả lời
-    response = provider.generate(user_query, system_prompt=CHATBOT_BASELINE_PROMPT)
+    response = provider.generate(safe_query, system_prompt=CHATBOT_BASELINE_PROMPT)
     print(f"🤖 Chatbot Baseline trả lời:\n{response}")
 
 
@@ -89,12 +99,19 @@ def run_react_agent(test_case: dict, provider):
     
     print(f"\n==================================================")
     print(f"🤖 [REACT AGENT] [TEST CASE #{tc_id}] [{category}]")
-    print(f"❓ Câu hỏi: {user_query}")
+    print(f"❓ Câu hỏi: {redact_sensitive_text(user_query)}")
     print(f"--------------------------------------------------")
+
+    safe_query, refusal = prepare_user_query(user_query)
+    if refusal:
+        print(f"👁️ Observation: [{refusal[0]}] {refusal[1]}")
+        print(f"\n🏁 ReAct Agent đã dừng an toàn: {refusal[1]}")
+        return
     
-    conversation_prompt = f"User Question: {user_query}\n"
+    conversation_prompt = f"User Question: {safe_query}\n"
     step = 0
     final_answer_found = False
+    executed_actions = set()
     
     while step < MAX_ITERATIONS:
         step += 1
@@ -102,34 +119,28 @@ def run_react_agent(test_case: dict, provider):
         
         # 1. Gọi LLM Provider thực hiện suy luận Thought & Action
         response = provider.generate(conversation_prompt, system_prompt=REACT_SYSTEM_PROMPT)
+        if not response or not isinstance(response, str):
+            response = "[Lỗi Provider]: Không nhận được văn bản phản hồi từ LLM."
         print(response)
-        
         # Cập nhật prompt tích lũy ngữ cảnh
         conversation_prompt += f"{response}\n"
         
         # 2. Kiểm tra nếu Agent xuất ra Final Answer
-        if "Final Answer:" in response:
+        final_answer = extract_safe_final_answer(response)
+        if final_answer:
             final_answer_found = True
+            print(f"Final Answer: {final_answer}")
             print(f"\n🏁 ReAct Agent đã hoàn thành nhiệm vụ ở bước {step}!")
+            break
+        if "Final Answer:" in response:
+            print("🛡️ GUARDRAIL TRIGGERED: Final Answer không hợp lệ hoặc chứa thông tin nhạy cảm.")
             break
             
         # 3. Trích xuất Action và thực thi Tool
         tool_name, args = parse_action(response)
         if tool_name:
-            if tool_name in AVAILABLE_TOOLS:
-                tool_func = AVAILABLE_TOOLS[tool_name]
-                try:
-                    obs = tool_func(*args)
-                except TypeError:
-                    try:
-                        obs = tool_func(args[0]) if args else tool_func()
-                    except Exception as e:
-                        obs = f"LỖI: Truyền sai số lượng tham số cho tool '{tool_name}': {e}"
-                except Exception as e:
-                    obs = f"LỖI: Xảy ra lỗi khi chạy tool '{tool_name}': {e}"
-            else:
-                obs = f"LỖI: Tool '{tool_name}' không được đăng ký. Các tool hợp lệ gồm: {list(AVAILABLE_TOOLS.keys())}"
-                
+            print(f"🔧 Action: {tool_name}[{', '.join(args)}]")
+            obs = execute_safe_tool(tool_name, args, executed_actions)
             print(f"👁️ Observation: {obs}")
             conversation_prompt += f"Observation: {obs}\n"
         else:
@@ -145,11 +156,12 @@ def run_react_agent(test_case: dict, provider):
         print("\n📝 [TỔNG HỢP FINAL ANSWER SAU OBSERVATION CUỐI]")
         synthesis_prompt = conversation_prompt + "\nThought: Đã nhận được dữ liệu từ công cụ. Hãy đưa ra câu trả lời Final Answer hoàn chỉnh giải thích kết quả cho người dùng.\n"
         final_res = provider.generate(synthesis_prompt, system_prompt=REACT_SYSTEM_PROMPT)
-        print(final_res)
-        if "Final Answer:" in final_res:
+        final_answer = extract_safe_final_answer(final_res)
+        if final_answer:
+            print(f"Final Answer: {final_answer}")
             print("\n🏁 ReAct Agent đã hoàn thành tổng hợp câu trả lời cuối cùng!")
         else:
-            print(f"\n🛡️ GUARDRAIL TRIGGERED: Đã đạt giới hạn tối đa {MAX_ITERATIONS} bước. Ngắt lặp an toàn!")
+            print(f"\n🛡️ GUARDRAIL TRIGGERED: Không thể tạo câu trả lời an toàn sau tối đa {MAX_ITERATIONS} bước.")
 
 
 def run_interactive_agent(provider):

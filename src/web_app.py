@@ -14,9 +14,14 @@ from dotenv import load_dotenv
 # Đảm bảo import các module cùng thư mục src/
 sys.path.append(os.path.dirname(os.path.abspath(__file__)))
 
-from tools import AVAILABLE_TOOLS
 from prompts import CHATBOT_BASELINE_PROMPT, REACT_SYSTEM_PROMPT, MAX_ITERATIONS
 from providers import get_llm_provider, BaseLLMProvider
+from agent_safety import (
+    execute_safe_tool,
+    extract_safe_final_answer,
+    prepare_user_query,
+    redact_sensitive_text,
+)
 
 load_dotenv()
 
@@ -56,23 +61,37 @@ def parse_action(text: str):
 def run_baseline_chatbot_trace(user_query: str):
     """Chạy Chatbot Baseline và trả về kết quả cấu trúc"""
     global provider
-    res = provider.generate(user_query, system_prompt=CHATBOT_BASELINE_PROMPT)
+    safe_query, refusal = prepare_user_query(user_query)
+    if refusal:
+        return {"query": redact_sensitive_text(user_query), "response": refusal[1], "guardrail_triggered": True}
+    res = provider.generate(safe_query, system_prompt=CHATBOT_BASELINE_PROMPT)
     if not res:
         res = "[Lỗi Provider]: Không nhận được phản hồi từ LLM."
     return {
-        "query": user_query,
-        "response": res
+        "query": redact_sensitive_text(user_query),
+        "response": redact_sensitive_text(res),
+        "guardrail_triggered": False,
     }
 
 
 def run_react_agent_trace(user_query: str):
     """Chạy ReAct Agent và thu thập chi tiết chuỗi suy luận Thought -> Action -> Observation"""
     global provider
-    conversation_prompt = f"User Question: {user_query}\n"
+    safe_query, refusal = prepare_user_query(user_query)
+    if refusal:
+        return {
+            "query": redact_sensitive_text(user_query),
+            "steps": [{"step": 0, "thought": "Yêu cầu bị chặn bởi guardrail.", "action": None,
+                       "observation": f"[{refusal[0]}]", "final_answer": refusal[1]}],
+            "final_answer": refusal[1],
+            "guardrail_triggered": True,
+        }
+    conversation_prompt = f"User Question: {safe_query}\n"
     step = 0
     final_answer_found = False
     trace_steps = []
     final_answer = ""
+    executed_actions = set()
 
     while step < MAX_ITERATIONS:
         step += 1
@@ -82,15 +101,14 @@ def run_react_agent_trace(user_query: str):
             
         conversation_prompt += f"{raw_response}\n"
 
-        # Trích xuất Thought
-        thought_match = re.search(r"Thought:\s*(.*?)(?=\nAction:|\nFinal Answer:|$)", raw_response, re.DOTALL)
-        thought_text = thought_match.group(1).strip() if thought_match else raw_response.strip()
+        # Không trả Thought thô cho client: đây là nội bộ của Agent.
+        thought_text = "Agent đang chọn bước xử lý tiếp theo."
 
         # Kiểm tra Final Answer
-        if "Final Answer:" in raw_response:
+        safe_answer = extract_safe_final_answer(raw_response)
+        if safe_answer:
             final_answer_found = True
-            fa_match = re.search(r"Final Answer:\s*(.*)", raw_response, re.DOTALL)
-            final_answer = fa_match.group(1).strip() if fa_match else raw_response
+            final_answer = safe_answer
             trace_steps.append({
                 "step": step,
                 "thought": thought_text,
@@ -98,6 +116,11 @@ def run_react_agent_trace(user_query: str):
                 "observation": None,
                 "final_answer": final_answer
             })
+            break
+        if "Final Answer:" in raw_response:
+            final_answer = "Hệ thống không thể trả lời vì phản hồi có chứa nội dung không an toàn."
+            trace_steps.append({"step": step, "thought": "Final Answer bị chặn bởi guardrail.", "action": None,
+                                "observation": "[TOOL_ERROR:sensitive_output_detected]", "final_answer": final_answer})
             break
 
         # Trích xuất Action và thực thi Tool
@@ -107,19 +130,7 @@ def run_react_agent_trace(user_query: str):
 
         if tool_name:
             action_text = f"{tool_name}[{', '.join(args)}]"
-            if tool_name in AVAILABLE_TOOLS:
-                tool_func = AVAILABLE_TOOLS[tool_name]
-                try:
-                    obs_text = tool_func(*args)
-                except TypeError:
-                    try:
-                        obs_text = tool_func(args[0]) if args else tool_func()
-                    except Exception as e:
-                        obs_text = f"LỖI: Truyền sai tham số cho tool '{tool_name}': {e}"
-                except Exception as e:
-                    obs_text = f"LỖI: Xảy ra lỗi khi chạy tool '{tool_name}': {e}"
-            else:
-                obs_text = f"LỖI: Tool '{tool_name}' chưa đăng ký."
+            obs_text = execute_safe_tool(tool_name, args, executed_actions)
             conversation_prompt += f"Observation: {obs_text}\n"
 
         trace_steps.append({
@@ -134,14 +145,14 @@ def run_react_agent_trace(user_query: str):
     if not final_answer_found:
         synthesis_prompt = conversation_prompt + "\nThought: Đã nhận được dữ liệu từ công cụ. Hãy đưa ra câu trả lời Final Answer hoàn chỉnh giải thích kết quả cho người dùng.\n"
         final_res = provider.generate(synthesis_prompt, system_prompt=REACT_SYSTEM_PROMPT)
-        if final_res and "Final Answer:" in final_res:
-            fa_match = re.search(r"Final Answer:\s*(.*)", final_res, re.DOTALL)
-            final_answer = fa_match.group(1).strip() if fa_match else final_res
+        safe_answer = extract_safe_final_answer(final_res)
+        if safe_answer:
+            final_answer = safe_answer
         else:
-            final_answer = final_res if final_res else "Hệ thống đã đạt giới hạn suy luận an toàn."
+            final_answer = "Hệ thống đã đạt giới hạn suy luận an toàn."
             
     return {
-        "query": user_query,
+        "query": redact_sensitive_text(user_query),
         "steps": trace_steps,
         "final_answer": final_answer,
         "guardrail_triggered": not final_answer_found and (step >= MAX_ITERATIONS)
@@ -196,7 +207,7 @@ def api_test_cases():
 @app.route("/api/chat", methods=["POST"])
 def api_chat():
     data = request.json or {}
-    user_query = data.get("query", "").strip()
+    user_query = str(data.get("query", "")).strip()
     mode = data.get("mode", "react")  # 'react' hoặc 'baseline'
     
     if not user_query:
@@ -213,7 +224,7 @@ def api_chat():
 @app.route("/api/compare", methods=["POST"])
 def api_compare():
     data = request.json or {}
-    user_query = data.get("query", "").strip()
+    user_query = str(data.get("query", "")).strip()
     if not user_query:
         return jsonify({"error": "Câu hỏi không được để trống"}), 400
 
@@ -221,7 +232,7 @@ def api_compare():
     react_res = run_react_agent_trace(user_query)
 
     return jsonify({
-        "query": user_query,
+        "query": redact_sensitive_text(user_query),
         "baseline": baseline_res,
         "react": react_res
     })

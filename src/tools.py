@@ -7,7 +7,10 @@ Các công cụ được thiết kế chống crash code, tự động bắt l�
 import csv
 import json
 import os
+import re
 from datetime import datetime
+
+from prompts import TOOL_FAILURE_MODES
 
 # Đường dẫn dữ liệu
 CSV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "orders.csv"))
@@ -16,6 +19,22 @@ POLICIES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "d
 # Ngày hiện tại thực tế của hệ thống (Tính động theo thời gian thực để sẵn sàng cho dự án thật)
 CURRENT_DATE = datetime.now().date()
 CURRENT_DATE_STR = CURRENT_DATE.strftime("%Y-%m-%d")
+ORDER_ID_PATTERN = re.compile(r"^ORD-\d{4,}$", re.IGNORECASE)
+
+
+def tool_error(code: str, detail: str = "") -> str:
+    """Trả lỗi có mã thống nhất để Agent Loop xử lý an toàn, không phụ thuộc text lỗi."""
+    message = TOOL_FAILURE_MODES.get(code, TOOL_FAILURE_MODES["service_error"])
+    suffix = f" {detail}" if detail else ""
+    return f"[TOOL_ERROR:{code}] {message}{suffix}"
+
+
+def normalize_order_id(order_id: str) -> str | None:
+    """Chỉ chấp nhận mã đơn theo contract công khai, tránh truy vấn mơ hồ."""
+    if not isinstance(order_id, str):
+        return None
+    normalized = order_id.strip().upper()
+    return normalized if ORDER_ID_PATTERN.fullmatch(normalized) else None
 
 
 def load_return_policies() -> dict:
@@ -49,14 +68,16 @@ def get_order_status(order_id: str) -> str:
         order_id (str): Mã đơn hàng (Ví dụ: 'ORD-1001', 'ORD-1002')
         
     Returns:
-        str: Chi tiết trạng thái đơn hàng (Khách hàng, sản phẩm, ngành hàng, giá trị, trạng thái giao hàng).
+        str: Chi tiết đơn hàng: khách hàng, sản phẩm, ngành hàng, giá trị, trạng thái và ngày giao.
     """
     if not isinstance(order_id, str):
-        return "LỖI: Mã đơn hàng truyền vào phải là một chuỗi văn bản."
+        return tool_error("malformed_arguments", "Mã đơn hàng phải là chuỗi văn bản.")
         
-    order_id = order_id.strip().upper()
+    order_id = normalize_order_id(order_id)
+    if not order_id:
+        return tool_error("malformed_arguments", "Mã đơn phải có dạng ORD-1234.")
     if not os.path.exists(CSV_PATH):
-        return "LỖI: Hệ thống cơ sở dữ liệu đơn hàng (data/orders.csv) không tồn tại."
+        return tool_error("service_error", "Không thể truy cập dữ liệu đơn hàng.")
         
     try:
         with open(CSV_PATH, mode="r", encoding="utf-8") as file:
@@ -73,9 +94,9 @@ def get_order_status(order_id: str) -> str:
                         f"- Giá trị: {row.get('price', 'N/A')} VND\n"
                         f"- Trạng thái: {status}{delivery_info}"
                     )
-        return f"LỖI: Không tìm thấy đơn hàng nào có mã '{order_id}' trong hệ thống."
-    except Exception as e:
-        return f"LỖI: Có lỗi xảy ra khi truy vấn dữ liệu đơn hàng: {str(e)}"
+        return tool_error("order_not_found", f"Không tìm thấy mã đơn '{order_id}'.")
+    except Exception:
+        return tool_error("service_error", "Không thể tra cứu đơn hàng lúc này.")
 
 
 def get_return_policy(category: str) -> str:
@@ -89,7 +110,7 @@ def get_return_policy(category: str) -> str:
         str: Quy định đổi trả của danh mục (số ngày tối đa được đổi trả và điều kiện sản phẩm).
     """
     if not isinstance(category, str):
-        return "LỖI: Tên danh mục truyền vào phải là một chuỗi văn bản."
+        return tool_error("malformed_arguments", "Danh mục phải là chuỗi văn bản.")
         
     cat_lower = category.lower().strip()
     try:
@@ -98,9 +119,9 @@ def get_return_policy(category: str) -> str:
             policy = policies[cat_lower]
             return f"Chính sách đổi trả cho '{category}': Tối đa {policy['days']} ngày kể từ ngày nhận hàng thành công. Điều kiện: {policy['condition']}"
         else:
-            return f"LỖI: Không tìm thấy danh mục '{category}'. Các danh mục hợp lệ gồm: {list(policies.keys())}"
-    except Exception as e:
-        return f"LỖI: Không thể lấy chính sách đổi trả: {str(e)}"
+            return tool_error("policy_not_found", "Danh mục không có chính sách đổi trả.")
+    except Exception:
+        return tool_error("service_error", "Không thể lấy chính sách đổi trả lúc này.")
 
 
 def request_return(order_id: str, reason: str) -> str:
@@ -116,15 +137,17 @@ def request_return(order_id: str, reason: str) -> str:
         str: Kết quả phê duyệt đổi trả (DUYỆT THÀNH CÔNG hoặc TỪ CHỐI) kèm lý do chi tiết.
     """
     if not isinstance(order_id, str):
-        return "LỖI: Mã đơn hàng truyền vào phải là một chuỗi văn bản."
+        return tool_error("malformed_arguments", "Mã đơn hàng phải là chuỗi văn bản.")
     if not isinstance(reason, str):
-        return "LỖI: Lý do đổi trả truyền vào phải là một chuỗi văn bản."
+        return tool_error("malformed_arguments", "Lý do đổi trả phải là chuỗi văn bản.")
         
-    order_id = order_id.strip().upper()
+    order_id = normalize_order_id(order_id)
     reason = reason.strip()
+    if not order_id or not reason:
+        return tool_error("malformed_arguments", "Cần mã đơn hợp lệ và lý do đổi trả.")
     
     if not os.path.exists(CSV_PATH):
-        return "LỖI: Hệ thống cơ sở dữ liệu đơn hàng (data/orders.csv) không tồn tại."
+        return tool_error("service_error", "Không thể truy cập dữ liệu đơn hàng.")
         
     try:
         # 1. Tìm thông tin đơn hàng trong database CSV
@@ -137,26 +160,26 @@ def request_return(order_id: str, reason: str) -> str:
                     break
                     
         if not order_row:
-            return f"LỖI: Không thể thực hiện đổi trả. Không tìm thấy đơn hàng '{order_id}'."
+            return tool_error("order_not_found", f"Không tìm thấy mã đơn '{order_id}'.")
             
         # 2. Kiểm tra trạng thái đơn hàng (chỉ hỗ trợ đổi trả khi đã giao hàng)
         status = order_row.get("status", "")
         if status != "Delivered":
-            return f"TỪ CHỐI: Đơn hàng '{order_id}' hiện có trạng thái là '{status}'. Chỉ đơn hàng đã giao thành công ('Delivered') mới được hỗ trợ đổi trả."
+            return tool_error("order_not_delivered", f"Đơn '{order_id}' đang ở trạng thái '{status}'.")
             
         # 3. Tính toán số ngày đã trôi qua kể từ ngày giao hàng thực tế
         delivery_date_str = order_row.get("delivery_date", "")
         if not delivery_date_str:
-            return f"LỖI: Đơn hàng '{order_id}' ghi nhận đã giao nhưng bị thiếu thông tin ngày giao hàng."
+            return tool_error("missing_delivery_date", f"Đơn '{order_id}' thiếu ngày giao hàng.")
             
         try:
             delivery_date = datetime.strptime(delivery_date_str, "%Y-%m-%d").date()
         except ValueError:
-            return f"LỖI: Định dạng ngày giao hàng của đơn '{order_id}' không hợp lệ (phải là YYYY-MM-DD)."
+            return tool_error("missing_delivery_date", f"Đơn '{order_id}' có ngày giao không hợp lệ.")
             
         days_passed = (CURRENT_DATE - delivery_date).days
         if days_passed < 0:
-            return f"LỖI: Ngày giao hàng {delivery_date_str} nằm trong tương lai so với ngày hiện tại thực tế ({CURRENT_DATE_STR})."
+            return tool_error("missing_delivery_date", "Ngày giao hàng không hợp lệ.")
             
         # 4. Kiểm tra chính sách theo danh mục sản phẩm
         category = order_row.get("category", "")
@@ -175,12 +198,13 @@ def request_return(order_id: str, reason: str) -> str:
             )
         else:
             return (
+                f"[TOOL_ERROR:ineligible_return] {TOOL_FAILURE_MODES['ineligible_return']}\n"
                 f"TỪ CHỐI: Đơn hàng {order_id} đã quá hạn đổi trả quy định.\n"
                 f"- Chi tiết kiểm tra: Sản phẩm thuộc nhóm '{category}' có thời hạn đổi trả là {limit_days} ngày. "
                 f"Tuy nhiên sản phẩm đã giao được {days_passed} ngày (từ {delivery_date_str} đến nay là {CURRENT_DATE_STR})."
             )
-    except Exception as e:
-        return f"LỖI: Không thể thực hiện xử lý yêu cầu đổi trả: {str(e)}"
+    except Exception:
+        return tool_error("service_error", "Không thể xử lý yêu cầu đổi trả lúc này.")
 
 
 # ==========================================
