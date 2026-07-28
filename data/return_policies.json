@@ -1,0 +1,22 @@
+{
+  "fashion": {
+    "days": 7,
+    "condition": "Còn nguyên tem mác, chưa qua sử dụng."
+  },
+  "electronics": {
+    "days": 15,
+    "condition": "Chưa kích hoạt, lỗi kỹ thuật từ nhà sản xuất."
+  },
+  "books": {
+    "days": 3,
+    "condition": "Không bị rách, bẩn, có kèm hóa đơn gốc."
+  },
+  "home & kitchen": {
+    "days": 10,
+    "condition": "Chưa qua sử dụng, đầy đủ phụ kiện và hộp."
+  },
+  "sports": {
+    "days": 7,
+    "condition": "Chưa qua sử dụng, còn bao bì nhãn mác nguyên vẹn."
+  }
+}

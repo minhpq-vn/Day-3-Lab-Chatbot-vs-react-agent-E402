@@ -1,0 +1,51 @@
+order_id,customer_name,order_date,delivery_date,status,product_name,category,price
+ORD-1001,Nguyen Van An,2026-07-25,2026-07-27,Delivered,Ao thun nam basic,Fashion,250000
+ORD-1002,Tran Thi Binh,2026-07-08,2026-07-10,Delivered,Tai nghe Sony CH520,Electronics,1200000
+ORD-1003,Le Hoang Chi,2026-07-26,,Shipping,Giay chay bo Bitis,Fashion,850000
+ORD-1004,Pham Duc Duy,2026-07-22,2026-07-24,Delivered,Sach Dac Nhan Tam,Books,80000
+ORD-1005,Hoang Quoc Anh,2026-07-24,2026-07-26,Delivered,Chuot gaming Logitech,Electronics,450000
+ORD-1006,Doan Thi Huong,2026-07-27,,Pending,Balo laptop,Fashion,600000
+ORD-1007,Ngo Quang Minh,2026-07-15,2026-07-17,Delivered,Dong ho thong minh Xiaomi,Electronics,990000
+ORD-1008,Vu Van Nam,2026-07-26,2026-07-28,Delivered,Binh giu nhiet LocknLock,Home & Kitchen,350000
+ORD-1009,Bui Thi Ngoc,2026-07-20,2026-07-22,Delivered,Vay hoa tiet nu,Fashion,450000
+ORD-1010,Dang Viet Cuong,2026-07-12,2026-07-14,Delivered,Sach giao khoa Toan,Books,50000
+ORD-1011,Dinh Van Dong,2026-07-28,,Pending,Ban phim co,Electronics,1500000
+ORD-1012,Phung Hoang Yen,2026-07-25,2026-07-27,Delivered,Son moi Rouge,Fashion,650000
+ORD-1013,Lam Thanh Son,2026-07-18,2026-07-20,Delivered,Thia nĩa inox set,Home & Kitchen,120000
+ORD-1014,Trieu Thi Trinh,2026-07-27,,Shipping,Sach Huong nghiep,Books,95000
+ORD-1015,Mai Van Tuan,2026-07-05,2026-07-07,Delivered,Sac du phong 20000mAh,Electronics,390000
+ORD-1016,Dao Quoc Khanh,2026-07-25,2026-07-27,Delivered,Quan short nam jean,Fashion,280000
+ORD-1017,Luong My Linh,2026-07-24,2026-07-26,Delivered,May say toc Philips,Electronics,550000
+ORD-1018,Phan Thanh Binh,2026-07-28,,Pending,Tham tap Yoga,Sports,220000
+ORD-1019,Ha Thi Xuan,2026-07-22,2026-07-24,Delivered,Vi da nu mini,Fashion,180000
+ORD-1020,Ngo Duy Khanh,2026-07-10,2026-07-12,Delivered,Am sieu toc,Home & Kitchen,250000
+ORD-1021,Vi Van Phong,2026-07-25,2026-07-27,Delivered,Sach lich su Viet Nam,Books,110000
+ORD-1022,Nong Thi Hang,2026-07-27,,Shipping,Op lung iPhone,Electronics,150000
+ORD-1023,Giang A Say,2026-07-26,2026-07-28,Delivered,Giay da nam cao cap,Fashion,1500000
+ORD-1024,Kim Tae Hee,2026-07-19,2026-07-21,Delivered,Noi chien khong dau,Home & Kitchen,2100000
+ORD-1025,Lee Min Ho,2026-07-28,,Pending,Ao khoac gio chong nuoc,Fashion,400000
+ORD-1026,Nguyen Van G,2026-07-11,2026-07-13,Delivered,Sach Tu duy phan bien,Books,120000
+ORD-1027,Tran Van H,2026-07-26,2026-07-28,Delivered,Quat ban mini USB,Electronics,180000
+ORD-1028,Le Van I,2026-07-27,,Shipping,Kinh mat thoi trang,Fashion,320000
+ORD-1029,Pham Van K,2026-07-25,2026-07-27,Delivered,Khăn tam cotton,Home & Kitchen,90000
+ORD-1030,Hoang Van L,2026-07-02,2026-07-04,Delivered,Tai nghe nhet tai,Electronics,150000
+ORD-1031,Doan Van M,2026-07-28,,Pending,Sach ngu phap Tieng Anh,Books,130000
+ORD-1032,Ngo Van N,2026-07-24,2026-07-26,Delivered,Dep le quai ngang,Fashion,120000
+ORD-1033,Vu Van O,2026-07-23,2026-07-25,Delivered,Den led de ban,Electronics,290000
+ORD-1034,Bui Van P,2026-07-27,,Shipping,Tham lau chan,Home & Kitchen,60000
+ORD-1035,Dang Van Q,2026-07-26,2026-07-28,Delivered,Mu luoi trai the thao,Fashion,150000
+ORD-1036,Dinh Van R,2026-07-14,2026-07-16,Delivered,Sach Khoi nghiep,Books,140000
+ORD-1037,Phung Van S,2026-07-28,,Pending,Lo vi song Electrolux,Home & Kitchen,2800000
+ORD-1038,Lam Van T,2026-07-25,2026-07-27,Delivered,Day nit da thoi trang,Fashion,200000
+ORD-1039,Trieu Van U,2026-07-17,2026-07-19,Delivered,Loa bluetooth JBL,Electronics,1800000
+ORD-1040,Mai Van V,2026-07-27,,Shipping,Sach tieu thuyet trinh tham,Books,125000
+ORD-1041,Dao Van X,2026-07-26,2026-07-28,Delivered,Ao so mi cong so,Fashion,350000
+ORD-1042,Luong Van Y,2026-07-22,2026-07-24,Delivered,May xay sinh to,Home & Kitchen,650000
+ORD-1043,Phan Van Z,2026-07-28,,Pending,Sac nhanh Type-C,Electronics,220000
+ORD-1044,Ha Van A1,2026-07-24,2026-07-26,Delivered,Sach ky nang giao tiep,Books,90000
+ORD-1045,Ngo Van B1,2026-07-27,,Shipping,Tui xach nu deo cheo,Fashion,450000
+ORD-1046,Vu Van C1,2026-07-25,2026-07-27,Delivered,Dong ho treo tuong,Home & Kitchen,300000
+ORD-1047,Bui Van D1,2026-07-16,2026-07-18,Delivered,The nho 64GB MicroSD,Electronics,160000
+ORD-1048,Dang Van E1,2026-07-28,,Pending,Giay luoi nam thoi trang,Fashion,490000
+ORD-1049,Dinh Van F1,2026-07-26,2026-07-28,Delivered,Bo noi inox 3 chiec,Home & Kitchen,750000
+ORD-1050,Phung Van G1,2026-07-20,2026-07-22,Delivered,Sach ngu nguon tieng Viet,Books,115000
