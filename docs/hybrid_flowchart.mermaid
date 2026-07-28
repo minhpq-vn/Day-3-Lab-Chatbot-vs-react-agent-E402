@@ -1,0 +1,51 @@
+flowchart TD
+    A([Cau hoi cua nguoi dung]) --> B{Loai cau hoi?}
+
+    B -->|FAQ don gian hoac tu van chung| C[Nhanh Chatbot baseline]
+    C --> D[Goi LLM mot lan voi CHATBOT_BASELINE_PROMPT]
+    D --> E[Tra loi truc tiep, khong dung tool]
+
+    B -->|Can du lieu don hang, chinh sach doi tra, hoac suy luan nhieu buoc| F[Nhanh ReAct Agent]
+    F --> G[Tao conversation prompt tu cau hoi]
+    G --> H[Goi LLM voi REACT_SYSTEM_PROMPT]
+    H --> I{Ket qua LLM}
+
+    I -->|Final Answer| J([Tra cau tra loi cuoi cung])
+
+    I -->|Thought + Action| K[Phan tich Action: tool_name va args]
+    K --> L{Tool hop le?}
+
+    L -->|Co| M[Chay tool tu AVAILABLE_TOOLS]
+    M --> N[Observation: ket qua tool that hoac loi tool]
+
+    L -->|Khong| O[Observation: loi tool khong ton tai + danh sach tool hop le]
+    O --> P[Them Observation vao conversation prompt]
+    N --> P
+
+    P --> Q{Step < MAX_ITERATIONS?}
+    Q -->|Co| H
+    Q -->|Khong| R[Kich hoat Guardrail]
+    R --> S([Fallback an toan: dung vong lap va yeu cau nguoi dung kiem tra hoac lien he ho tro])
+
+    I -->|Action sai dinh dang hoac bi thieu| T[Observation: loi dinh dang]
+    T --> P
+
+    subgraph Tools[Cac tool da dang ky]
+        U[get_order_status order_id]
+        V[get_return_policy category]
+        W[request_return order_id, reason]
+    end
+
+    M -. co the goi .-> U
+    M -. co the goi .-> V
+    M -. co the goi .-> W
+
+    subgraph Role5[San pham can ghi nhan cua Role 5]
+        X[Trace log: Thought -> Action -> Observation]
+        Y[So sanh Chatbot va ReAct Agent]
+        Z[Scoring Matrix va phan tich loi]
+    end
+
+    E -. ghi nhan .-> Y
+    J -. ghi nhan .-> X
+    S -. ghi nhan .-> Z
