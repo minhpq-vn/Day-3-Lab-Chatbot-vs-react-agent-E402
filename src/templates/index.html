@@ -1,0 +1,770 @@
+<!DOCTYPE html>
+<html lang="vi">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>VinUni AI Lab 3 — Chatbot vs ReAct Agent Studio</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@400;600;700;800&display=swap" rel="stylesheet">
+    <!-- FontAwesome Icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    
+    <style>
+        :root {
+            --bg-dark: #090d16;
+            --card-bg: rgba(22, 31, 48, 0.7);
+            --card-border: rgba(255, 255, 255, 0.08);
+            --primary: #6366f1;
+            --primary-glow: rgba(99, 102, 241, 0.35);
+            --accent: #ec4899;
+            --cyan: #06b6d4;
+            --success: #10b981;
+            --warning: #f59e0b;
+            --danger: #ef4444;
+            --text-main: #f8fafc;
+            --text-muted: #94a3b8;
+            --radius-lg: 16px;
+            --radius-md: 12px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+            font-family: 'Inter', sans-serif;
+        }
+
+        body {
+            background-color: var(--bg-dark);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(99, 102, 241, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 100%, rgba(236, 72, 153, 0.12) 0px, transparent 50%),
+                radial-gradient(at 50% 50%, rgba(6, 182, 212, 0.08) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+
+        /* Top Header */
+        header {
+            background: rgba(15, 23, 42, 0.8);
+            backdrop-filter: blur(16px);
+            border-bottom: 1px solid var(--card-border);
+            padding: 16px 32px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .brand-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 20px;
+            color: white;
+            box-shadow: 0 0 16px var(--primary-glow);
+        }
+
+        .brand-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 20px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            background: linear-gradient(90deg, #ffffff, #cbd5e1);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-subtitle {
+            font-size: 12px;
+            color: var(--text-muted);
+        }
+
+        .system-badge {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--card-border);
+            padding: 6px 14px;
+            border-radius: 20px;
+            font-size: 13px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .dot-online {
+            width: 8px;
+            height: 8px;
+            background-color: var(--success);
+            border-radius: 50%;
+            box-shadow: 0 0 8px var(--success);
+        }
+
+        /* Navigation Tabs */
+        .nav-container {
+            display: flex;
+            justify-content: center;
+            margin: 20px 0 10px 0;
+        }
+
+        .nav-tabs {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            padding: 6px;
+            border-radius: 14px;
+            display: flex;
+            gap: 6px;
+            backdrop-filter: blur(10px);
+        }
+
+        .nav-tab {
+            padding: 10px 20px;
+            border-radius: 10px;
+            border: none;
+            background: transparent;
+            color: var(--text-muted);
+            font-size: 14px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.25s ease;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .nav-tab.active {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: white;
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        .nav-tab:hover:not(.active) {
+            color: var(--text-main);
+            background: rgba(255, 255, 255, 0.04);
+        }
+
+        /* Main Container */
+        main {
+            max-width: 1200px;
+            width: 100%;
+            margin: 0 auto 40px auto;
+            padding: 0 20px;
+            flex: 1;
+        }
+
+        .tab-content {
+            display: none;
+        }
+
+        .tab-content.active {
+            display: block;
+            animation: fadeIn 0.3s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Glassmorphism Card */
+        .glass-card {
+            background: var(--card-bg);
+            backdrop-filter: blur(16px);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 24px;
+            margin-bottom: 20px;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+
+        /* Studio Chat Section */
+        .chat-container {
+            height: 540px;
+            display: flex;
+            flex-direction: column;
+            border-radius: var(--radius-lg);
+            overflow: hidden;
+            border: 1px solid var(--card-border);
+            background: rgba(15, 23, 42, 0.5);
+        }
+
+        .chat-messages {
+            flex: 1;
+            padding: 24px;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chat-msg {
+            display: flex;
+            gap: 14px;
+            max-width: 85%;
+        }
+
+        .chat-msg.user {
+            align-self: flex-end;
+            flex-direction: row-reverse;
+        }
+
+        .avatar {
+            width: 38px;
+            height: 38px;
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 16px;
+            flex-shrink: 0;
+        }
+
+        .avatar.user {
+            background: linear-gradient(135deg, var(--cyan), #0284c7);
+        }
+
+        .avatar.agent {
+            background: linear-gradient(135deg, var(--primary), var(--accent));
+        }
+
+        .msg-bubble {
+            background: rgba(30, 41, 59, 0.7);
+            border: 1px solid var(--card-border);
+            padding: 16px 20px;
+            border-radius: 16px;
+            font-size: 14.5px;
+            line-height: 1.6;
+        }
+
+        .chat-msg.user .msg-bubble {
+            background: linear-gradient(135deg, #4f46e5, #4338ca);
+            border: none;
+            color: white;
+            border-bottom-right-radius: 4px;
+        }
+
+        .chat-msg.agent .msg-bubble {
+            border-bottom-left-radius: 4px;
+        }
+
+        /* ReAct Trace Badges */
+        .trace-box {
+            margin-bottom: 12px;
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-md);
+            padding: 12px 16px;
+            font-size: 13.5px;
+        }
+
+        .trace-header {
+            color: var(--cyan);
+            font-weight: 600;
+            margin-bottom: 6px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .trace-action {
+            color: var(--warning);
+            background: rgba(245, 158, 11, 0.1);
+            border-left: 3px solid var(--warning);
+            padding: 6px 12px;
+            margin: 6px 0;
+            border-radius: 4px;
+            font-family: monospace;
+        }
+
+        .trace-obs {
+            color: var(--success);
+            background: rgba(16, 185, 129, 0.1);
+            border-left: 3px solid var(--success);
+            padding: 6px 12px;
+            margin-top: 6px;
+            border-radius: 4px;
+        }
+
+        /* Input Area */
+        .chat-input-area {
+            padding: 16px 20px;
+            background: rgba(15, 23, 42, 0.9);
+            border-top: 1px solid var(--card-border);
+            display: flex;
+            gap: 12px;
+        }
+
+        .chat-input {
+            flex: 1;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: 12px;
+            padding: 12px 18px;
+            color: white;
+            font-size: 14.5px;
+            outline: none;
+            transition: border 0.2s;
+        }
+
+        .chat-input:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 10px var(--primary-glow);
+        }
+
+        .btn-send {
+            background: linear-gradient(135deg, var(--primary), #4f46e5);
+            color: white;
+            border: none;
+            padding: 0 24px;
+            border-radius: 12px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn-send:hover {
+            transform: translateY(-1px);
+            box-shadow: 0 4px 12px var(--primary-glow);
+        }
+
+        /* Side-by-Side Comparison */
+        .compare-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 20px;
+        }
+
+        .compare-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-lg);
+            padding: 20px;
+        }
+
+        .compare-header {
+            font-family: 'Outfit', sans-serif;
+            font-size: 16px;
+            font-weight: 600;
+            padding-bottom: 12px;
+            border-bottom: 1px solid var(--card-border);
+            margin-bottom: 16px;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        /* Test Cases Cards */
+        .test-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(320px, 1fr));
+            gap: 16px;
+        }
+
+        .test-card {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid var(--card-border);
+            border-radius: var(--radius-md);
+            padding: 18px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .test-card:hover {
+            border-color: var(--primary);
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px rgba(99, 102, 241, 0.15);
+        }
+
+        .test-tag {
+            font-size: 11.5px;
+            padding: 3px 10px;
+            border-radius: 12px;
+            font-weight: 600;
+            display: inline-block;
+            margin-bottom: 10px;
+            background: rgba(99, 102, 241, 0.15);
+            color: #a5b4fc;
+        }
+
+        /* Settings Form */
+        .setting-group {
+            margin-bottom: 20px;
+        }
+
+        .setting-group label {
+            display: block;
+            font-size: 14px;
+            font-weight: 500;
+            margin-bottom: 8px;
+            color: var(--text-muted);
+        }
+
+        .setting-select {
+            width: 100%;
+            background: rgba(30, 41, 59, 0.6);
+            border: 1px solid var(--card-border);
+            padding: 12px;
+            border-radius: 10px;
+            color: white;
+            font-size: 14.5px;
+        }
+
+        /* Footer */
+        footer {
+            text-align: center;
+            padding: 20px;
+            font-size: 13px;
+            color: var(--text-muted);
+            border-top: 1px solid var(--card-border);
+            background: rgba(15, 23, 42, 0.4);
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            border-top-color: white;
+            animation: spin 0.8s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+    </style>
+</head>
+<body>
+
+    <!-- Top Header -->
+    <header>
+        <div class="brand">
+            <div class="brand-icon">
+                <i class="fa-solid fa-robot"></i>
+            </div>
+            <div>
+                <div class="brand-title">VINUNI AI LAB 3</div>
+                <div class="brand-subtitle">Chatbot Baseline vs ReAct Agent Studio</div>
+            </div>
+        </div>
+        <div class="system-badge">
+            <div class="dot-online"></div>
+            <span id="providerStatus">LLM Provider: GeminiProvider (gemini-2.5-flash)</span>
+        </div>
+    </header>
+
+    <!-- Navigation Tabs -->
+    <div class="nav-container">
+        <div class="nav-tabs">
+            <button class="nav-tab active" onclick="switchTab('studio')">
+                <i class="fa-solid fa-comments"></i> Live Chat Studio
+            </button>
+            <button class="nav-tab" onclick="switchTab('compare')">
+                <i class="fa-solid fa-scale-balanced"></i> So Sánh Side-by-Side
+            </button>
+            <button class="nav-tab" onclick="switchTab('testsuite')">
+                <i class="fa-solid fa-vial"></i> Bộ 5 Test Cases
+            </button>
+            <button class="nav-tab" onclick="switchTab('settings')">
+                <i class="fa-solid fa-gear"></i> Cấu Hình Provider
+            </button>
+        </div>
+    </div>
+
+    <!-- Main Content Area -->
+    <main>
+        <!-- TAB 1: Live Chat Studio -->
+        <div id="tab-studio" class="tab-content active">
+            <div class="glass-card" style="padding: 0; overflow: hidden;">
+                <div class="chat-container">
+                    <div class="chat-messages" id="chatMessages">
+                        <div class="chat-msg agent">
+                            <div class="avatar agent"><i class="fa-solid fa-robot"></i></div>
+                            <div class="msg-bubble">
+                                👋 Xin chào! Tôi là <b>ReAct Agent Trợ Lý Tra Cứu & Đổi Trả Đơn Hàng</b>.<br>
+                                Bạn có thể tra cứu đơn hàng (Ví dụ: <code>ORD-1001</code>, <code>ORD-1002</code>), chính sách đổi trả hoặc gửi yêu cầu đổi trả ngay tại đây!
+                            </div>
+                        </div>
+                    </div>
+                    <div class="chat-input-area">
+                        <input type="text" id="userInput" class="chat-input" placeholder="Nhập câu hỏi (Ví dụ: Kiểm tra trạng thái đơn ORD-1001)..." onkeypress="handleKeyPress(event)">
+                        <button class="btn-send" onclick="sendMessage()">
+                            <span>Gửi</span> <i class="fa-solid fa-paper-plane"></i>
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: So Sánh Side-by-Side -->
+        <div id="tab-compare" class="tab-content">
+            <div class="glass-card">
+                <h3 style="font-family: 'Outfit'; margin-bottom: 16px;">⚖️ So Sánh Khác Biệt Giữa Chatbot Baseline & ReAct Agent</h3>
+                <div style="display: flex; gap: 12px; margin-bottom: 20px;">
+                    <input type="text" id="compareInput" class="chat-input" placeholder="Nhập câu hỏi thử nghiệm (Ví dụ: Kiểm tra đơn ORD-1003 và gửi đổi trả)...">
+                    <button class="btn-send" onclick="runComparison()">
+                        <i class="fa-solid fa-bolt"></i> So Sánh Ngay
+                    </button>
+                </div>
+
+                <div class="compare-grid">
+                    <!-- Column 1: Chatbot Baseline -->
+                    <div class="compare-card">
+                        <div class="compare-header" style="color: var(--warning);">
+                            <i class="fa-solid fa-comment-slash"></i> Chatbot Baseline (Không dùng Tool)
+                        </div>
+                        <div id="compareBaseline" style="font-size: 14px; color: var(--text-muted); min-height: 180px;">
+                            Bấm "So Sánh Ngay" để thấy Chatbot Baseline trả lời dựa trên kiến thức tĩnh.
+                        </div>
+                    </div>
+
+                    <!-- Column 2: ReAct Agent -->
+                    <div class="compare-card">
+                        <div class="compare-header" style="color: var(--cyan);">
+                            <i class="fa-solid fa-brain"></i> ReAct Agent (Suy luận & Gọi Tool)
+                        </div>
+                        <div id="compareReact" style="font-size: 14px; color: var(--text-muted); min-height: 180px;">
+                            ReAct Agent sẽ thực hiện chuỗi Thought ➔ Action ➔ Observation để xử lý.
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: Bộ 5 Test Cases -->
+        <div id="tab-testsuite" class="tab-content">
+            <div class="glass-card">
+                <h3 style="font-family: 'Outfit'; margin-bottom: 16px;">🧪 Bộ 5 Test Cases Thử Thách AI (Đề Tài 5)</h3>
+                <p style="color: var(--text-muted); font-size: 14px; margin-bottom: 20px;">
+                    Bấm vào từng câu test để đẩy sang Live Chat Studio hoặc chạy thử nghiệm trực tiếp!
+                </p>
+                <div class="test-grid" id="testCasesGrid">
+                    <!-- Dynamic Test Cards -->
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 4: Cấu Hình Provider -->
+        <div id="tab-settings" class="tab-content">
+            <div class="glass-card" style="max-width: 600px; margin: 0 auto;">
+                <h3 style="font-family: 'Outfit'; margin-bottom: 20px;"><i class="fa-solid fa-sliders"></i> Cấu Hình Nhà Cung Cấp AI (LLM Provider)</h3>
+                <div class="setting-group">
+                    <label>Chọn LLM Provider:</label>
+                    <select id="providerSelect" class="setting-select">
+                        <option value="gemini">Google Gemini (Default: gemini-2.5-flash)</option>
+                        <option value="mock">Offline Mock Mode (Chạy nhanh không cần API Key)</option>
+                        <option value="openai">OpenAI (Default: gpt-4o-mini)</option>
+                        <option value="openrouter">OpenRouter API</option>
+                    </select>
+                </div>
+                <button class="btn-send" style="width: 100%; justify-content: center; padding: 14px;" onclick="saveConfig()">
+                    <i class="fa-solid fa-floppy-disk"></i> Lưu Cấu Hình Provider
+                </button>
+            </div>
+        </div>
+    </main>
+
+    <!-- Footer -->
+    <footer>
+        🎓 VinUni AI Codelab × GDGoC — Bài Lab 3: Chatbot vs ReAct Agent | Role 4 Core Web App
+    </footer>
+
+    <!-- JavaScript Logic -->
+    <script>
+        // Fetch System Status at startup
+        fetchStatus();
+        loadTestCases();
+
+        function switchTab(tabId) {
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            document.querySelectorAll('.nav-tab').forEach(el => el.classList.remove('active'));
+            
+            document.getElementById('tab-' + tabId).classList.add('active');
+            event.currentTarget.classList.add('active');
+        }
+
+        function fetchStatus() {
+            fetch('/api/status')
+                .then(res => res.json())
+                .then(data => {
+                    document.getElementById('providerStatus').innerText = 
+                        `LLM Provider: ${data.provider} (${data.model_name})`;
+                    document.getElementById('providerSelect').value = data.provider_code || 'gemini';
+                })
+                .catch(err => console.error(err));
+        }
+
+        function saveConfig() {
+            const providerCode = document.getElementById('providerSelect').value;
+            fetch('/api/config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ provider: providerCode })
+            })
+            .then(res => res.json())
+            .then(data => {
+                alert(`✅ Đã chuyển Provider sang: ${data.provider} (${data.model_name})`);
+                fetchStatus();
+            });
+        }
+
+        function handleKeyPress(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function sendMessage() {
+            const inputEl = document.getElementById('userInput');
+            const query = inputEl.value.strip ? inputEl.value.strip() : inputEl.value.trim();
+            if (!query) return;
+
+            const messagesContainer = document.getElementById('chatMessages');
+
+            // Render User Message
+            const userMsgDiv = document.createElement('div');
+            userMsgDiv.className = 'chat-msg user';
+            userMsgDiv.innerHTML = `
+                <div class="avatar user"><i class="fa-solid fa-user"></i></div>
+                <div class="msg-bubble">${escapeHtml(query)}</div>
+            `;
+            messagesContainer.appendChild(userMsgDiv);
+            inputEl.value = '';
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Render Agent Loading Bubble
+            const agentMsgDiv = document.createElement('div');
+            agentMsgDiv.className = 'chat-msg agent';
+            agentMsgDiv.innerHTML = `
+                <div class="avatar agent"><i class="fa-solid fa-robot"></i></div>
+                <div class="msg-bubble">
+                    <div class="loading-spinner"></div> <span style="color: var(--text-muted); font-size: 13.5px;">ReAct Agent đang suy luận Thought ➔ Action...</span>
+                </div>
+            `;
+            messagesContainer.appendChild(agentMsgDiv);
+            messagesContainer.scrollTop = messagesContainer.scrollHeight;
+
+            // Fetch ReAct Chat API
+            fetch('/api/chat', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query, mode: 'react' })
+            })
+            .then(res => res.json())
+            .then(data => {
+                let traceHtml = '';
+                if (data.steps && data.steps.length > 0) {
+                    data.steps.forEach(s => {
+                        traceHtml += `<div class="trace-box">`;
+                        if (s.thought) {
+                            traceHtml += `<div class="trace-header"><i class="fa-solid fa-brain"></i> Step ${s.step} — Thought:</div><div>${escapeHtml(s.thought)}</div>`;
+                        }
+                        if (s.action) {
+                            traceHtml += `<div class="trace-action"><i class="fa-solid fa-gears"></i> Action: ${escapeHtml(s.action)}</div>`;
+                        }
+                        if (s.observation) {
+                            traceHtml += `<div class="trace-obs"><i class="fa-solid fa-eye"></i> Observation: ${escapeHtml(s.observation)}</div>`;
+                        }
+                        traceHtml += `</div>`;
+                    });
+                }
+
+                const finalAns = data.final_answer ? escapeHtml(data.final_answer) : 'Đã hoàn thành xử lý.';
+                agentMsgDiv.querySelector('.msg-bubble').innerHTML = `
+                    ${traceHtml}
+                    <div style="margin-top: 10px; font-weight: 500; border-top: 1px solid var(--card-border); padding-top: 10px;">
+                        🏁 <b>Final Answer:</b><br>${finalAns}
+                    </div>
+                `;
+                messagesContainer.scrollTop = messagesContainer.scrollHeight;
+            })
+            .catch(err => {
+                agentMsgDiv.querySelector('.msg-bubble').innerHTML = `<span style="color: var(--danger)">❌ Lỗi kết nối server: ${err}</span>`;
+            });
+        }
+
+        function runComparison() {
+            const query = document.getElementById('compareInput').value.trim();
+            if (!query) {
+                alert('Vui lòng nhập câu hỏi thử nghiệm!');
+                return;
+            }
+
+            document.getElementById('compareBaseline').innerHTML = `<div class="loading-spinner"></div> Đang gọi Chatbot Baseline...`;
+            document.getElementById('compareReact').innerHTML = `<div class="loading-spinner"></div> ReAct Agent đang suy luận chuỗi Thought -> Action...`;
+
+            fetch('/api/compare', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ query: query })
+            })
+            .then(res => res.json())
+            .then(data => {
+                // Baseline output
+                document.getElementById('compareBaseline').innerHTML = `
+                    <div style="line-height: 1.6; white-space: pre-wrap;">${escapeHtml(data.baseline.response)}</div>
+                `;
+
+                // ReAct Agent output
+                let reactHtml = '';
+                if (data.react.steps) {
+                    data.react.steps.forEach(s => {
+                        reactHtml += `<div class="trace-box" style="margin-bottom: 8px;">`;
+                        if (s.action) reactHtml += `<div style="color: var(--warning); font-family: monospace;">🛠️ Action: ${escapeHtml(s.action)}</div>`;
+                        if (s.observation) reactHtml += `<div style="color: var(--success);">👁️ Obs: ${escapeHtml(s.observation)}</div>`;
+                        reactHtml += `</div>`;
+                    });
+                }
+                reactHtml += `<div style="margin-top: 10px; font-weight: 500;">🏁 <b>Final Answer:</b><br>${escapeHtml(data.react.final_answer)}</div>`;
+                document.getElementById('compareReact').innerHTML = reactHtml;
+            });
+        }
+
+        function loadTestCases() {
+            fetch('/api/test_cases')
+                .then(res => res.json())
+                .then(cases => {
+                    const grid = document.getElementById('testCasesGrid');
+                    grid.innerHTML = '';
+                    cases.forEach(c => {
+                        const card = document.createElement('div');
+                        card.className = 'test-card';
+                        card.onclick = () => {
+                            document.getElementById('userInput').value = c.question;
+                            document.getElementById('compareInput').value = c.question;
+                            switchTab('studio');
+                        };
+                        card.innerHTML = `
+                            <span class="test-tag">Test #${c.id} — ${escapeHtml(c.category)}</span>
+                            <div style="font-weight: 600; font-size: 14px; margin-bottom: 8px;">"${escapeHtml(c.question)}"</div>
+                            <div style="font-size: 12.5px; color: var(--text-muted);">${escapeHtml(c.expected_behavior || '')}</div>
+                        `;
+                        grid.appendChild(card);
+                    });
+                });
+        }
+
+        function escapeHtml(str) {
+            if (!str) return '';
+            return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;").replace(/'/g, "&#039;");
+        }
+    </script>
+</body>
+</html>
