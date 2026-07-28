@@ -7,11 +7,12 @@
 
 | Tiêu chí | Điểm (1-5) | Lý do đánh giá |
 | :--- | :---: | :--- |
-| 🧠 **Multi-step Reasoning** | `4/5` | Cần suy luận từ tra cứu thời tiết đến chọn trang phục. |
-| 🛠️ **Tool Interaction** | `5/5` | Cần tra cứu dữ liệu thời gian thực qua API thời tiết/chuyến bay. |
-| 🔀 **Dynamic Decision** | `4/5` | Kết quả bước trước quyết định hành động bước sau. |
-| ⏳ **Long Horizon** | `3/5` | Quy trình gồm 2-3 bước xử lý ngắn. |
-| **TỔNG ĐIỂM FIT** | **16/20** | **KẾT LUẬN: BÀI TOÁN RẤT NÊN DÙNG REACT AGENT!** |
+| 🧠 **Multi-step Reasoning** | `5/5` | Phải suy luận qua nhiều bước: tra cứu đơn hàng → kiểm tra tình trạng giao hàng → đối chiếu chính sách đổi trả (thời hạn, điều kiện) → ra quyết định chấp nhận/từ chối. |
+| 🛠️ **Tool Interaction** | `5/5` | Cần gọi tool tra cứu đơn hàng theo mã đơn (database/API), tool kiểm tra chính sách đổi trả, và có thể tool tính số ngày kể từ khi nhận hàng. |
+| 🔀 **Dynamic Decision** | `5/5` | Kết quả tra cứu (VD: đơn đã giao 20 ngày trước) quyết định hoàn toàn hành động tiếp theo (được đổi/không được đổi/cần hỏi thêm lý do). |
+| ⏳ **Long Horizon** | `3/5` | Quy trình thường gồm 2-4 bước xử lý, không quá dài nhưng có rẽ nhánh logic. |
+| **TỔNG ĐIỂM FIT** | **18/20** | **KẾT LUẬN: BÀI TOÁN RẤT NÊN DÙNG REACT AGENT — Chatbot thuần không thể tra cứu dữ liệu đơn hàng thực tế hay áp dụng chính sách theo từng trường hợp cụ thể.** |
+
 
 ---
 
