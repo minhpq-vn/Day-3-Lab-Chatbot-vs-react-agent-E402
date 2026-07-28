@@ -139,9 +139,16 @@ def run_react_agent(test_case: dict, provider):
             else:
                 break
                 
-    # 4. Phanh an toàn Guardrails ngắt lặp khi đạt MAX_ITERATIONS
-    if step >= MAX_ITERATIONS and not final_answer_found:
-        print(f"\n🛡️ GUARDRAIL TRIGGERED: Đã đạt giới hạn tối đa {MAX_ITERATIONS} bước. Ngắt lặp an toàn!")
+    # 4. Phanh an toàn Guardrails hoặc Lượt tổng hợp Final Answer sau Observation cuối cùng
+    if not final_answer_found:
+        print("\n📝 [TỔNG HỢP FINAL ANSWER SAU OBSERVATION CUỐI]")
+        synthesis_prompt = conversation_prompt + "\nThought: Đã nhận được dữ liệu từ công cụ. Hãy đưa ra câu trả lời Final Answer hoàn chỉnh giải thích kết quả cho người dùng.\n"
+        final_res = provider.generate(synthesis_prompt, system_prompt=REACT_SYSTEM_PROMPT)
+        print(final_res)
+        if "Final Answer:" in final_res:
+            print("\n🏁 ReAct Agent đã hoàn thành tổng hợp câu trả lời cuối cùng!")
+        else:
+            print(f"\n🛡️ GUARDRAIL TRIGGERED: Đã đạt giới hạn tối đa {MAX_ITERATIONS} bước. Ngắt lặp an toàn!")
 
 
 if __name__ == "__main__":

@@ -71,5 +71,5 @@ TOOL_FAILURE_MODES = {
 }
 
 # 🛡️ GUARDRAILS CONFIGURATION (PHANH AN TOÀN)
-MAX_ITERATIONS = 3  # Tối đa 3 vòng Thought-Action để tránh lặp vô tận
+MAX_ITERATIONS = 5  # Tối đa 5 vòng Thought-Action để cho phép quy trình multi-step (gọi tối đa 3 tools + sinh Final Answer)
 TIMEOUT_SECONDS = 10  # Timeout cho mỗi lần gọi tool
