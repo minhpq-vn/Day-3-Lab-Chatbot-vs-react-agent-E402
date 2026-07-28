@@ -27,7 +27,7 @@
 | TC4 🟡 Multi-step | "Đổi ORD-1001 vì áo không vừa size — kiểm tra & gửi yêu cầu giúp tôi" | Không kiểm tra, không tạo yêu cầu đổi trả. Chỉ đưa ra chính sách chung + hướng dẫn liên hệ hotline. | Bằng chứng rõ nhất cho **Agentic Fit tiêu chí 2 & 3**: tác vụ cần hành động thật (tạo yêu cầu) và suy luận nhiều bước (tra đơn ➔ check điều kiện ➔ tạo yêu cầu) — Chatbot hoàn toàn bó tay ở bước đầu tiên. |
 | TC5 🔴 Edge case | "Trả ORD-1002 vì tai nghe không còn phù hợp nhu cầu" | Tương tự TC4: không tra cứu, chỉ đưa chính sách chung rồi đẩy sang người thật. | Vì Chatbot không tra cứu được nên **cũng không có rủi ro duyệt sai** — nhưng đó là vì nó "bó tay" toàn bộ chứ không phải vì nó thông minh. Chính là lý do cần ReAct Agent: vừa tra cứu được thật, vừa phải có Guardrail để không duyệt sai. |
 
-### 🔑 Kết luận rút ra cho Role 5 (đưa vào báo cáo Agentic Fit)
+### 🔑 Kết luận rút ra
 1. **Điểm mạnh của Chatbot baseline**: không bịa trạng thái đơn hàng cụ thể (không nói khống "đơn đã giao ngày X") — nó thành thật về giới hạn của mình.
 2. **Điểm yếu chí mạng**: 100% test case cần dữ liệu thật (TC2–TC5) đều bị đẩy sang con người → Chatbot **không tự động hoá được gì**, chỉ đóng vai trò FAQ tĩnh.
 3. **Rủi ro ẩn cần nêu bật**: ở TC3, Chatbot vẫn "sáng tác" ra các con số chính sách (7 ngày, 3-7 ngày…) nghe rất thật nhưng không có nguồn xác thực — đây là dạng hallucination nguy hiểm hơn vì khó phát hiện.
@@ -89,7 +89,7 @@ Agent tự kiểm tra điều kiện (7 ngày) trước khi duyệt — không d
 ```
 Đây là bằng chứng Guardrail mạnh nhất: Agent **tự động từ chối** dựa trên logic ngày tháng thật (2026-07-10 → 2026-07-28 = 18 ngày > 15 ngày cho phép), không bị thao túng bởi lời lẽ thuyết phục của khách ("không còn phù hợp nhu cầu").
 
-### 📌 Bảng so sánh nhanh Baseline vs ReAct (dùng cho slide)
+### 📌 Bảng so sánh nhanh Baseline vs ReAct
 
 | Test case | Chatbot Baseline | ReAct Agent |
 |---|---|---|
