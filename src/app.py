@@ -119,6 +119,9 @@ def run_react_agent(test_case: dict, provider):
         
         # 1. Gọi LLM Provider thực hiện suy luận Thought & Action
         response = provider.generate(conversation_prompt, system_prompt=REACT_SYSTEM_PROMPT)
+        if not response or not isinstance(response, str):
+            response = "[Lỗi Provider]: Không nhận được văn bản phản hồi từ LLM."
+        print(response)
         # Cập nhật prompt tích lũy ngữ cảnh
         conversation_prompt += f"{response}\n"
         

@@ -41,7 +41,18 @@ class GeminiProvider(BaseLLMProvider):
                 model=self.model_name,
                 contents=contents
             )
-            return response.text
+            if response and getattr(response, "text", None):
+                return response.text
+            elif response and hasattr(response, "candidates") and response.candidates:
+                try:
+                    cand = response.candidates[0]
+                    parts = cand.content.parts
+                    text_parts = [p.text for p in parts if getattr(p, "text", None)]
+                    if text_parts:
+                        return "".join(text_parts)
+                except Exception:
+                    pass
+            return "[Gemini Notice]: Không nhận được dữ liệu văn bản từ Gemini API (MALFORMED_RESPONSE)."
         except Exception as e:
             return f"[Gemini Exception]: {str(e)}"
 
