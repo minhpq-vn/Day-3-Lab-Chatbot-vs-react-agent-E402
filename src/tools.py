@@ -6,15 +6,65 @@ Nơi khai báo tất cả các "món đồ nghề" mà ReAct Agent có thể g�
 import csv
 import json
 import os
-from datetime import datetime
+from datetime import datetime, timedelta
 
 # Đường dẫn dữ liệu
 CSV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "orders.csv"))
 POLICIES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "return_policies.json"))
 
-# Ngày hiện tại giả lập trong hệ thống (để chạy bài lab một cách deterministic)
-CURRENT_DATE_STR = "2026-07-28"
-CURRENT_DATE = datetime.strptime(CURRENT_DATE_STR, "%Y-%m-%d").date()
+# Ngày hiện tại thực tế của hệ thống (Không còn fix cứng nữa)
+CURRENT_DATE = datetime.now().date()
+CURRENT_DATE_STR = CURRENT_DATE.strftime("%Y-%m-%d")
+
+
+def sync_database_dates():
+    """
+    Tự động cập nhật ngày trong file data/orders.csv để đồng bộ với ngày hiện tại của hệ thống.
+    Giúp bài lab luôn đúng về mặt logic thời gian bất kể ngày chạy thực tế là ngày nào.
+    """
+    if not os.path.exists(CSV_PATH):
+        return
+        
+    # Mốc ngày gốc dùng để thiết kế dữ liệu ban đầu
+    base_date = datetime.strptime("2026-07-28", "%Y-%m-%d").date()
+    delta = CURRENT_DATE - base_date
+    
+    if delta.days == 0:
+        return  # Không cần dịch chuyển nếu ngày chạy trùng với mốc ngày gốc
+        
+    rows = []
+    headers = []
+    
+    # 1. Đọc và dịch chuyển ngày trong bộ dữ liệu
+    with open(CSV_PATH, mode="r", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        headers = reader.fieldnames
+        for row in reader:
+            # Dịch chuyển ngày đặt hàng (order_date)
+            if row.get("order_date"):
+                try:
+                    od = datetime.strptime(row["order_date"], "%Y-%m-%d").date()
+                    row["order_date"] = (od + delta).strftime("%Y-%m-%d")
+                except ValueError:
+                    pass
+            # Dịch chuyển ngày giao hàng (delivery_date)
+            if row.get("delivery_date"):
+                try:
+                    dd = datetime.strptime(row["delivery_date"], "%Y-%m-%d").date()
+                    row["delivery_date"] = (dd + delta).strftime("%Y-%m-%d")
+                except ValueError:
+                    pass
+            rows.append(row)
+            
+    # 2. Ghi lại dữ liệu đã đồng bộ vào file CSV
+    with open(CSV_PATH, mode="w", encoding="utf-8", newline="") as file:
+        writer = csv.DictWriter(file, fieldnames=headers)
+        writer.writeheader()
+        writer.writerows(rows)
+
+
+# Tự động đồng bộ ngày trong CSV khi module tools được import
+sync_database_dates()
 
 
 def load_return_policies() -> dict:
@@ -115,7 +165,7 @@ def request_return(order_id: str, reason: str) -> str:
     if status != "Delivered":
         return f"TỪ CHỐI: Đơn hàng '{order_id}' hiện có trạng thái là '{status}'. Chỉ đơn hàng đã giao thành công ('Delivered') mới được hỗ trợ đổi trả."
         
-    # 3. Tính toán số ngày đã trôi qua kể từ ngày giao hàng
+    # 3. Tính toán số ngày đã trôi qua kể từ ngày giao hàng thực tế
     delivery_date_str = order_row["delivery_date"]
     if not delivery_date_str:
         return f"LỖI: Đơn hàng '{order_id}' ghi nhận đã giao nhưng bị thiếu thông tin ngày giao hàng."
@@ -127,7 +177,7 @@ def request_return(order_id: str, reason: str) -> str:
         
     days_passed = (CURRENT_DATE - delivery_date).days
     if days_passed < 0:
-        return f"LỖI: Ngày giao hàng {delivery_date_str} nằm trong tương lai so với ngày hiện tại giả lập ({CURRENT_DATE_STR})."
+        return f"LỖI: Ngày giao hàng {delivery_date_str} nằm trong tương lai so với ngày hiện tại thực tế ({CURRENT_DATE_STR})."
         
     # 4. Kiểm tra chính sách theo danh mục sản phẩm
     category = order_row["category"]
