@@ -1,49 +1,160 @@
 """
 🛠️ TOOL REGISTRY & SCHEMAS (Dành cho Role 2: Tool & Spec Engineer)
-Nơi khai báo tất cả các "món đồ nghề" mà ReAct Agent có thể gọi.
+Nơi khai báo tất cả các "món đồ nghề" mà ReAct Agent có thể gọi để tra cứu đơn hàng và xử lý đổi trả.
 """
 
-def get_weather(location: str) -> str:
+import csv
+import json
+import os
+from datetime import datetime
+
+# Đường dẫn dữ liệu
+CSV_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "orders.csv"))
+POLICIES_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", "data", "return_policies.json"))
+
+# Ngày hiện tại giả lập trong hệ thống (để chạy bài lab một cách deterministic)
+CURRENT_DATE_STR = "2026-07-28"
+CURRENT_DATE = datetime.strptime(CURRENT_DATE_STR, "%Y-%m-%d").date()
+
+
+def load_return_policies() -> dict:
+    """Tải cấu hình chính sách đổi trả từ file JSON."""
+    if not os.path.exists(POLICIES_PATH):
+        # Trả về dữ liệu mặc định dự phòng nếu file không tồn tại
+        return {
+            "fashion": {"days": 7, "condition": "Còn nguyên tem mác, chưa qua sử dụng."},
+            "electronics": {"days": 15, "condition": "Chưa kích hoạt, lỗi kỹ thuật từ nhà sản xuất."},
+            "books": {"days": 3, "condition": "Không bị rách, bẩn, có kèm hóa đơn gốc."},
+            "home & kitchen": {"days": 10, "condition": "Chưa qua sử dụng, đầy đủ phụ kiện và hộp."},
+            "sports": {"days": 7, "condition": "Chưa qua sử dụng, còn bao bì nhãn mác nguyên vẹn."}
+        }
+    with open(POLICIES_PATH, "r", encoding="utf-8") as f:
+        return json.load(f)
+
+
+def get_order_status(order_id: str) -> str:
     """
-    Tra cứu thời tiết hiện tại của một thành phố.
+    Tra cứu thông tin trạng thái của một đơn hàng cụ thể từ hệ thống.
     
     Args:
-        location (str): Tên thành phố (Ví dụ: 'Hà Nội', 'TP.HCM', 'Đà Nẵng')
+        order_id (str): Mã đơn hàng (Ví dụ: 'ORD-1001', 'ORD-1002')
         
     Returns:
-        str: Thông tin thời tiết chi tiết
+        str: Chi tiết trạng thái đơn hàng (Khách hàng, sản phẩm, ngành hàng, giá trị, trạng thái giao hàng).
     """
-    loc_lower = location.lower()
-    if "hà nội" in loc_lower or "ha noi" in loc_lower:
-        return "Thời tiết Hà Nội: 28°C, Nắng nhẹ, Độ ẩm 65%."
-    elif "hồ chí minh" in loc_lower or "tp.hcm" in loc_lower or "hcm" in loc_lower:
-        return "Thời tiết TP.HCM: 33°C, Nắng nóng, Có mây."
-    elif "đà nẵng" in loc_lower or "da nang" in loc_lower:
-        return "Thời tiết Đà Nẵng: 30°C, Gió nhẹ, Mát mẻ."
+    order_id = order_id.strip().upper()
+    if not os.path.exists(CSV_PATH):
+        return "LỖI: Hệ thống cơ sở dữ liệu đơn hàng (data/orders.csv) không tồn tại."
+        
+    with open(CSV_PATH, mode="r", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row["order_id"] == order_id:
+                delivery_date = row["delivery_date"]
+                status = row["status"]
+                delivery_info = f" (giao ngày {delivery_date})" if delivery_date else ""
+                return (
+                    f"Thông tin đơn hàng {order_id}:\n"
+                    f"- Khách hàng: {row['customer_name']}\n"
+                    f"- Sản phẩm: {row['product_name']} (Danh mục: {row['category']})\n"
+                    f"- Giá trị: {row['price']} VND\n"
+                    f"- Trạng thái: {status}{delivery_info}"
+                )
+    return f"LỖI: Không tìm thấy đơn hàng nào có mã '{order_id}' trong hệ thống."
+
+
+def get_return_policy(category: str) -> str:
+    """
+    Tra cứu chính sách đổi trả hàng cho một danh mục sản phẩm cụ thể.
+    
+    Args:
+        category (str): Tên danh mục (Ví dụ: 'Fashion', 'Electronics', 'Books', 'Home & Kitchen', 'Sports')
+        
+    Returns:
+        str: Quy định đổi trả của danh mục (số ngày tối đa được đổi trả và điều kiện sản phẩm).
+    """
+    cat_lower = category.lower().strip()
+    policies = load_return_policies()
+    if cat_lower in policies:
+        policy = policies[cat_lower]
+        return f"Chính sách đổi trả cho '{category}': Tối đa {policy['days']} ngày kể từ ngày nhận hàng thành công. Điều kiện: {policy['condition']}"
     else:
-        return f"LỖI: Không tìm thấy dữ liệu thời tiết cho địa điểm '{location}'."
+        return f"LỖI: Không tìm thấy danh mục '{category}'. Các danh mục hợp lệ gồm: {list(policies.keys())}"
 
 
-def search_flights(origin: str, destination: str) -> str:
+def request_return(order_id: str, reason: str) -> str:
     """
-    Tra cứu chuyến bay giữa hai địa điểm.
+    Gửi yêu cầu đổi trả sản phẩm cho một đơn hàng cụ thể. Hệ thống sẽ tự động đối chiếu
+    ngày giao hàng thực tế và chính sách đổi trả của ngành hàng để phê duyệt hoặc từ chối.
     
     Args:
-        origin (str): Nơi đi (Ví dụ: 'TP.HCM')
-        destination (str): Nơi đến (Ví dụ: 'Hà Nội')
+        order_id (str): Mã đơn hàng muốn đổi trả (Ví dụ: 'ORD-1001')
+        reason (str): Lý do muốn đổi trả (Ví dụ: 'Bị lỗi kỹ thuật', 'Mặc không vừa size')
         
     Returns:
-        str: Danh sách chuyến bay khả dụng và giá vé
+        str: Kết quả phê duyệt đổi trả (DUYỆT THÀNH CÔNG hoặc TỪ CHỐI) kèm lý do chi tiết.
     """
-    return (
-        f"Chuyến bay từ {origin} -> {destination} ngày mai:\n"
-        f"1. VN123 (08:00) - Giá: 1,500,000 VNĐ (Còn vé)\n"
-        f"2. VJ456 (14:30) - Giá: 1,200,000 VNĐ (Còn vé)"
-    )
+    order_id = order_id.strip().upper()
+    if not os.path.exists(CSV_PATH):
+        return "LỖI: Hệ thống cơ sở dữ liệu đơn hàng (data/orders.csv) không tồn tại."
+        
+    # 1. Tìm thông tin đơn hàng trong database CSV
+    order_row = None
+    with open(CSV_PATH, mode="r", encoding="utf-8") as file:
+        reader = csv.DictReader(file)
+        for row in reader:
+            if row["order_id"] == order_id:
+                order_row = row
+                break
+                
+    if not order_row:
+        return f"LỖI: Không thể thực hiện đổi trả. Không tìm thấy đơn hàng '{order_id}'."
+        
+    # 2. Kiểm tra trạng thái đơn hàng (chỉ hỗ trợ đổi trả khi đã giao hàng)
+    status = order_row["status"]
+    if status != "Delivered":
+        return f"TỪ CHỐI: Đơn hàng '{order_id}' hiện có trạng thái là '{status}'. Chỉ đơn hàng đã giao thành công ('Delivered') mới được hỗ trợ đổi trả."
+        
+    # 3. Tính toán số ngày đã trôi qua kể từ ngày giao hàng
+    delivery_date_str = order_row["delivery_date"]
+    if not delivery_date_str:
+        return f"LỖI: Đơn hàng '{order_id}' ghi nhận đã giao nhưng bị thiếu thông tin ngày giao hàng."
+        
+    try:
+        delivery_date = datetime.strptime(delivery_date_str, "%Y-%m-%d").date()
+    except ValueError:
+        return f"LỖI: Định dạng ngày giao hàng của đơn '{order_id}' không hợp lệ (phải là YYYY-MM-DD)."
+        
+    days_passed = (CURRENT_DATE - delivery_date).days
+    if days_passed < 0:
+        return f"LỖI: Ngày giao hàng {delivery_date_str} nằm trong tương lai so với ngày hiện tại giả lập ({CURRENT_DATE_STR})."
+        
+    # 4. Kiểm tra chính sách theo danh mục sản phẩm
+    category = order_row["category"]
+    cat_lower = category.lower().strip()
+    policies = load_return_policies()
+    policy = policies.get(cat_lower, {"days": 7, "condition": "Còn nguyên vẹn."})
+    limit_days = policy["days"]
+    
+    # 5. Phán quyết phê duyệt
+    if days_passed <= limit_days:
+        return (
+            f"DUYỆT THÀNH CÔNG: Đơn hàng {order_id} đủ điều kiện đổi trả tự động.\n"
+            f"- Lý do đổi trả: '{reason}'\n"
+            f"- Chi tiết kiểm tra: Sản phẩm thuộc nhóm '{category}' (thời hạn {limit_days} ngày), đã giao được {days_passed} ngày.\n"
+            f"- Yêu cầu: Khách hàng cần giữ sản phẩm ở điều kiện: '{policy['condition']}'."
+        )
+    else:
+        return (
+            f"TỪ CHỐI: Đơn hàng {order_id} đã quá hạn đổi trả quy định.\n"
+            f"- Chi tiết kiểm tra: Sản phẩm thuộc nhóm '{category}' có thời hạn đổi trả là {limit_days} ngày. "
+            f"Tuy nhiên sản phẩm đã giao được {days_passed} ngày (từ {delivery_date_str} đến nay là {CURRENT_DATE_STR})."
+        )
 
 
-# Danh sách các tool được đăng ký để Agent sử dụng
+# Danh sách các tool được đăng ký để Agent sử dụng cho Đề tài 5
 AVAILABLE_TOOLS = {
-    "get_weather": get_weather,
-    "search_flights": search_flights,
+    "get_order_status": get_order_status,
+    "get_return_policy": get_return_policy,
+    "request_return": request_return,
 }
