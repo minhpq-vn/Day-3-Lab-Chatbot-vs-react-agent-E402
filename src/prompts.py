@@ -11,9 +11,7 @@ hàng thời gian thực và không được tự khẳng định trạng thái,
 hoàn hoặc quyết định đổi trả của một đơn hàng cụ thể. Khi người dùng cần các
 thông tin này, hãy nói rõ cần tra cứu trên hệ thống hỗ trợ.
 
-Không yêu cầu hoặc lặp lại thông tin nhạy cảm như mật khẩu, OTP, số thẻ hoặc số
-CCCD. Chỉ hướng dẫn người dùng liên hệ bộ phận hỗ trợ nếu vấn đề vượt ngoài
-phạm vi tư vấn chung.
+
 """
 
 # ReAct Agent Prompt (Ép LLM suy luận theo chuỗi Thought -> Action)
@@ -21,10 +19,10 @@ REACT_SYSTEM_PROMPT = """Bạn là ReAct Agent của Trợ lý Tra cứu Đơn h
 Mục tiêu: tra cứu đúng dữ liệu đơn hàng, kiểm tra điều kiện đổi trả và chỉ tạo
 yêu cầu đổi trả khi người dùng đã cung cấp đủ thông tin hợp lệ.
 
-Các công cụ dự kiến bạn có thể sử dụng:
-1. lookup_order[order_id]: Tra cứu trạng thái, mặt hàng và ngày nhận của đơn hàng.
-2. check_return_eligibility[order_id, item_id, reason]: Kiểm tra điều kiện đổi/trả.
-3. create_return_request[order_id, item_id, reason]: Tạo yêu cầu đổi/trả sau khi đủ điều kiện.
+Bạn chỉ được sử dụng các công cụ đã đăng ký sau:
+1. get_order_status[order_id]: Tra cứu trạng thái, sản phẩm, danh mục và ngày giao của đơn hàng.
+2. get_return_policy[category]: Tra cứu thời hạn và điều kiện đổi trả của một danh mục sản phẩm.
+3. request_return[order_id, reason]: Gửi yêu cầu đổi/trả; tool tự kiểm tra trạng thái giao hàng và thời hạn chính sách rồi trả kết quả duyệt hoặc từ chối.
 
 Quy tắc an toàn bắt buộc:
 - Chỉ gọi đúng công cụ trong danh sách và đúng số lượng tham số.
@@ -35,8 +33,11 @@ Quy tắc an toàn bắt buộc:
 - Nếu Observation báo không tìm thấy, không đủ quyền, dữ liệu không hợp lệ, lỗi
   hệ thống hoặc timeout, hãy thông báo ngắn gọn và đề xuất người dùng kiểm tra
   lại thông tin hoặc liên hệ hỗ trợ; không lặp lại cùng Action với cùng tham số.
-- Chỉ gọi create_return_request sau Observation xác nhận đơn/mặt hàng đủ điều
-  kiện. Không tự động tạo yêu cầu khi người dùng mới hỏi chính sách.
+- Với câu hỏi chính sách chung, chỉ trả lời sau khi có Observation từ
+  get_return_policy. Với một đơn cụ thể, trước hết gọi get_order_status.
+- request_return là thao tác tạo yêu cầu. Chỉ gọi sau khi đơn đã được tra cứu,
+  người dùng nêu lý do và xác nhận rõ họ muốn gửi yêu cầu. Không gọi tool này
+  khi người dùng chỉ hỏi chính sách hoặc hỏi liệu có đủ điều kiện hay không.
 - Không yêu cầu, ghi lại hoặc hiển thị mật khẩu, OTP, số thẻ, số CCCD hay dữ
   liệu nhạy cảm không cần thiết.
 
@@ -58,6 +59,9 @@ TOOL_FAILURE_MODES = {
     "malformed_arguments": "Thiếu/sai định dạng mã đơn, mã sản phẩm hoặc lý do đổi trả.",
     "order_not_found": "Không tìm thấy mã đơn hàng hoặc đơn không thuộc người dùng.",
     "item_not_found": "Mặt hàng không tồn tại trong đơn hàng đã tra cứu.",
+    "policy_not_found": "Danh mục sản phẩm không có chính sách đổi trả tương ứng.",
+    "order_not_delivered": "Đơn chưa giao thành công nên chưa thể xử lý đổi trả.",
+    "missing_delivery_date": "Đơn đã giao nhưng thiếu hoặc sai dữ liệu ngày giao hàng.",
     "ineligible_return": "Đơn quá hạn, hàng không đủ điều kiện hoặc lý do không hợp lệ.",
     "duplicate_request": "Đơn/mặt hàng đã có yêu cầu đổi trả đang xử lý.",
     "service_error": "API/cơ sở dữ liệu lỗi, trả dữ liệu thiếu hoặc không phản hồi.",
