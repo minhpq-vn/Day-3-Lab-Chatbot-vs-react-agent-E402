@@ -1,7 +1,7 @@
 """
 🛠️ TOOL REGISTRY & SCHEMAS (Dành cho Role 2: Tool & Spec Engineer)
 Nơi khai báo tất cả các "món đồ nghề" mà ReAct Agent có thể gọi để tra cứu đơn hàng và xử lý đổi trả.
-Các công cụ được thiết kế chống crash 100%, tự động bắt lỗi tham số và hỗ trợ cả 2 bộ tên công cụ (từ prompts.py và test_cases.json).
+Các công cụ được thiết kế chống crash code, tự động bắt lỗi tham số và hỗ trợ cả 2 bộ tên công cụ (từ prompts.py và test_cases.json).
 """
 
 import csv
