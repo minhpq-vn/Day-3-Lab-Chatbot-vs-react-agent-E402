@@ -35,6 +35,71 @@
 
 ---
 
+## 3. Trace Log — ReAct Agent (Mốc 3)
+
+> LLM Provider: GeminiProvider (gemini-3.5-flash). MAX_ITERATIONS = 3. Chạy 5/5 test cases.
+
+### ✅ TC1 🟢 (1 bước) — Câu hỏi tĩnh, không cần Tool
+```
+[Thought] Đã đủ thông tin để trả lời dựa trên quy tắc chung (không cần tra dữ liệu thật).
+[Final Answer] Cần Mã đơn hàng + Lý do đổi trả để tiến hành kiểm tra và tạo yêu cầu.
+```
+Đúng như kỳ vọng — Agent nhận ra không cần gọi Tool cho câu hỏi loại FAQ.
+
+### ✅ TC2 🟡 (2 bước) — Tra cứu 1 Tool
+```
+[Thought] Cần tra cứu trạng thái đơn ORD-1003.
+[Action] get_order_status[ORD-1003]
+[Observation] Sản phẩm: Giày chạy bộ Bitis (Fashion) | 850,000đ | Trạng thái: Shipping
+[Thought] Đã có dữ liệu thật, trả lời.
+[Final Answer] Đơn ORD-1003 hiện đang "Đang giao hàng".
+```
+So với Chatbot Baseline (từ chối trả lời) — đây là bằng chứng trực quan nhất cho việc Agent tạo giá trị thật.
+
+### ⚠️ TC3 🟡 (2 Tools kỳ vọng) — **LỖI: Agent không hoàn thành**
+```
+[Thought] Cần tra ORD-1001 để biết danh mục sản phẩm.
+[Action] get_order_status[ORD-1001]
+[Observation] Sản phẩm: Áo thun nam basic (Fashion) | 250,000đ | Delivered 2026-07-27
+
+--- Step 2/3 ---
+(không có Thought/Action/Final Answer nào được sinh ra — log trống)
+```
+**🐞 Bug ghi nhận cho Role 2 & 3 xử lý:**
+- Agent đã lấy được danh mục "Fashion" ở bước 1 nhưng **không gọi tiếp Tool tra chính sách đổi trả** (ví dụ `get_return_policy` hay tương đương) để hoàn tất câu hỏi 2 vế ("thuộc danh mục nào **và** chính sách đổi trả ra sao").
+- Nghi vấn nguyên nhân: (a) Thiếu Tool tra cứu chính sách theo danh mục trong `tools.py`, khiến Agent không có Action nào để chọn ở bước 2; hoặc (b) Prompt không có Guardrail "nếu không có Action phù hợp, phải trả Final Answer để không bị treo vòng lặp" → Agent sinh ra output rỗng thay vì dừng.
+- **Đây chính là ví dụ thật cho mục 3 "Guardrails & Observability"** trong rubric — nên đưa case này vào phần "Bắt được lỗi loop" thay vì giấu đi, vì phát hiện + giải thích được lỗi cũng được tính điểm.
+
+### ✅ TC4 🟡 (3 bước, multi-step, đủ điều kiện) — Guardrail hoạt động đúng
+```
+[Action] get_order_status[ORD-1001] → Fashion, Delivered 2026-07-27
+[Thought] Đã giao 1 ngày, danh mục Fashion (hạn 7 ngày) → đủ điều kiện.
+[Action] request_return[ORD-1001, "áo mặc không vừa size"]
+[Observation] DUYỆT THÀNH CÔNG — Fashion hạn 7 ngày, đã giao 1 ngày.
+[Final Answer] Yêu cầu đổi trả ORD-1001 đã được duyệt. Giữ nguyên tem mác...
+```
+Agent tự kiểm tra điều kiện (7 ngày) trước khi duyệt — không duyệt mù theo yêu cầu của khách. Đúng tinh thần Guardrail.
+
+### ✅ TC5 🔴 (Edge case — quá hạn) — Guardrail chặn thành công
+```
+[Action] get_order_status[ORD-1002] → Electronics, Delivered 2026-07-10
+[Action] request_return[ORD-1002, "..."] 
+[Observation] TỪ CHỐI — Electronics hạn 15 ngày, đã giao 18 ngày → quá hạn.
+[Final Answer] Yêu cầu bị từ chối do quá hạn 15 ngày (đã 18 ngày).
+```
+Đây là bằng chứng Guardrail mạnh nhất: Agent **tự động từ chối** dựa trên logic ngày tháng thật (2026-07-10 → 2026-07-28 = 18 ngày > 15 ngày cho phép), không bị thao túng bởi lời lẽ thuyết phục của khách ("không còn phù hợp nhu cầu").
+
+### 📌 Bảng so sánh nhanh Baseline vs ReAct (dùng cho slide)
+
+| Test case | Chatbot Baseline | ReAct Agent |
+|---|---|---|
+| TC2 (tra cứu) | ❌ Từ chối, đẩy sang hotline | ✅ Trả lời đúng trạng thái thật |
+| TC3 (2 tools) | ⚠️ Bịa chính sách chung chung | ⚠️ Lấy đúng danh mục nhưng bug ở bước 2 (chưa lấy được chính sách) |
+| TC4 (duyệt đổi trả) | ❌ Không làm gì, đẩy sang người | ✅ Tự kiểm tra điều kiện rồi duyệt đúng |
+| TC5 (từ chối đổi trả) | ❌ Không kiểm tra được | ✅ Tự tính số ngày và từ chối đúng chính sách |
+
+---
+
 ## 🔍 2. SO SÁNH PHẢN HỒI (TEST CASE #3)
 
 **Câu hỏi**: *"Thời tiết ở Hà Nội hôm nay thế nào và tôi nên mặc gì đi chơi?"*
